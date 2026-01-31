@@ -1,0 +1,2 @@
+name,productId,category,price,quantity,unit,threshold,expiryDate
+Example Product,PRD100,Category,99,10,pcs,2,2026-12-31
