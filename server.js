@@ -25,14 +25,18 @@ connectDB();
 
 const app = express();
 
-app.use(cors());
-
 app.use(cors({
-  origin: "https://frontend-git-main-mudi-swathi.vercel.app",
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  origin: function (origin, callback) {
+    // allow requests with no origin (like Postman) or any frontend origin
+    callback(null, true);
+  },
+  credentials: true, // allow cookies or Authorization headers
+  methods: "*",
+  allowedHeaders:"*"
 }));
+
+app.options("*", cors());
+
 
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
