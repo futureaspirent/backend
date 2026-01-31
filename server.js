@@ -31,8 +31,7 @@ app.use(cors({
     callback(null, true);
   },
   credentials: true, // allow cookies or Authorization headers
-  methods: "*",
-  allowedHeaders:"*"
+
 }));
 
 
