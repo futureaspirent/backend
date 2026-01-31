@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
-
+import cors from "cors";
 import User from "../models/User.js";
 import RecentOtp from "../models/RecentOtp.js";
 
@@ -42,6 +42,12 @@ router.post("/signup", async (req, res) => {
 
 router.post("/login", async (req, res) => {
  
+// 🔥 ADD THIS
+router.use(cors({
+  origin: (origin, callback) => callback(null, true),
+  credentials: true
+}));
+
 
   const { email, password } = req.body;
   try {
