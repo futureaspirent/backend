@@ -119,7 +119,6 @@ router.post("/login", async (req, res) => {
 router.put("/reset-password", async (req, res) => {
   try {
 
-    
     const user = await User.findOne({
       email:req.body.email
     })
@@ -128,12 +127,12 @@ router.put("/reset-password", async (req, res) => {
 
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(req.body.password, salt);
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpire = undefined;
+  
     await user.save();
 
     res.json({ msg: "Password reset successful" });
   } catch (err) {
+    console.log(err)
     res.status(500).json({ msg: "Server error" });
   }
 });
