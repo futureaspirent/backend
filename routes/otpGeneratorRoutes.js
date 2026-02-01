@@ -4,10 +4,12 @@ import User from "../models/User.js";
 const router = express.Router();
 import nodemailer from "nodemailer";
 
+import {sendOtpEmail} from "../config/mailer.js";
 
 const generateOtp = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
+
 
 router.post("/generate", async (req, res) => {
   const { email } = req.body;
@@ -18,7 +20,6 @@ router.post("/generate", async (req, res) => {
 
   try {
     const userExists = await User.findOne({ email });
-
     if (!userExists) {
       return res.status(404).json({ msg: "Email not registered" });
     }
@@ -27,49 +28,20 @@ router.post("/generate", async (req, res) => {
 
     const otp = generateOtp();
 
-
-     const transporter = nodemailer.createTransport({
-          host: process.env.MAIL_HOST,
-          port: process.env.MAIL_PORT,
-          secure: true, // for 467
-          auth: {
-            user: process.env.MAIL_USER,
-            pass: process.env.MAIL_PASS,
-          },
-        });
-    
-      
-    
-        await transporter.sendMail({
-          from: process.env.MAIL_FROM,
-          to: email,
-          subject: "OTP Request",
-          html: `
-            <h2>${otp}</h2>
-            <p>Change your password</p>
-            <p>Otp will be expired in 30min</p>
-           
-          `,
-        });
-    
-
-
-
+    await sendOtpEmail(email, otp);
 
     const newOtp = new RecentOtp({ email, otp });
     await newOtp.save();
 
-
     res.json({
       msg: "OTP generated successfully",
-      otp, 
     });
-
   } catch (err) {
     console.error(err);
     res.status(500).json({ msg: "Server error" });
   }
 });
+
 
 
 router.post("/verify", async (req, res) => {
