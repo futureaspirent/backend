@@ -174,7 +174,7 @@ router.get("/:id/details", auth, async (req, res) => {
     }).lean();
 
     const items = sales.map(s => ({
-      name: s.name,
+      name: s.productId,
       qty: s.quantity,
       price: s.amount
     }));
