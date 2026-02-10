@@ -1,9 +1,5 @@
-
-
 import express from "express";
-import csv from "csv-parser";
 import fs from "fs";
-import path from "path";
 import mongoose from "mongoose";
 
 import Product from "../models/Product.js";
@@ -190,91 +186,101 @@ router.post(
       return res.status(400).json({ msg: "No CSV file uploaded" });
     }
 
-    const results = [];
-    const errors = [];
-    
-    fs.createReadStream(req.file.path)
-      .pipe(csv())
-      .on("data", (row) => results.push(row))
-      .on("end", async () => {
-        for (let i = 0; i < results.length; i++) {
-          const row = results[i];
+    try {
+      const fileData = fs.readFileSync(req.file.path, "utf8");
 
-          
-          const required = [
-            "name",
-            "productId",
-            "category",
-            "price",
-            "quantity",
-            "unit",
-            "threshold",
-          ];
+      const lines = fileData.split("\n").filter((l) => l.trim() !== "");
+      const headers = lines[0].split(",").map((h) => h.trim());
 
-          for (const field of required) {
-            if (!row[field] || row[field].toString().trim() === "") {
-              errors.push({
-                row: i + 2,
-                error: `${field} is missing`,
-              });
-            }
-          }
+      const results = [];
+      const errors = [];
 
-          ["price", "quantity", "threshold"].forEach((f) => {
-            if (isNaN(Number(row[f]))) {
-              errors.push({
-                row: i + 2,
-                error: `${f} must be a number`,
-              });
-            } else {
-              row[f] = Number(row[f]);
-            }
-          });
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(",").map((v) => v.trim());
+        const row = {};
 
-         
-          if (!/^[A-Z0-9]+$/.test(row.productId)) {
+        headers.forEach((header, index) => {
+          row[header] = values[index];
+        });
+
+        const required = [
+          "name",
+          "productId",
+          "category",
+          "price",
+          "quantity",
+          "unit",
+          "threshold",
+        ];
+
+        for (const field of required) {
+          if (!row[field]) {
             errors.push({
-              row: i + 2,
-              error: "productId must be uppercase alphanumeric",
+              row: i + 1,
+              error: `${field} is missing`,
             });
           }
+        }
 
-          const exists = await Product.findOne({
-            productId: row.productId,
-            owner: req.user,
-          });
-
-          if (exists) {
+        ["price", "quantity", "threshold"].forEach((f) => {
+          if (isNaN(Number(row[f]))) {
             errors.push({
-              row: i + 2,
-              error: "productId already exists",
+              row: i + 1,
+              error: `${f} must be a number`,
             });
+          } else {
+            row[f] = Number(row[f]);
           }
+        });
 
-          row.owner = req.user;
-        }
-
-        fs.unlinkSync(req.file.path);
-
-        if (errors.length > 0) {
-          return res.status(400).json({
-            msg: "Validation failed",
-            errors,
+        if (!/^[A-Z0-9]+$/.test(row.productId)) {
+          errors.push({
+            row: i + 1,
+            error: "productId must be uppercase alphanumeric",
           });
         }
 
-        try {
-          await Product.insertMany(results);
-          res.json({
-            msg: "Bulk upload successful",
-            total: results.length,
+        const exists = await Product.findOne({
+          productId: row.productId,
+          owner: req.user,
+        });
+
+        if (exists) {
+          errors.push({
+            row: i + 1,
+            error: "productId already exists",
           });
-        } catch (err) {
-          res.status(500).json({ msg: err.message });
         }
+
+        row.owner = req.user;
+        results.push(row);
+      }
+
+      fs.unlinkSync(req.file.path);
+
+      if (errors.length > 0) {
+        return res.status(400).json({
+          msg: "Validation failed",
+          errors,
+        });
+      }
+
+      await Product.insertMany(results);
+
+      res.json({
+        msg: "Bulk upload successful",
+        total: results.length,
       });
+    } catch (err) {
+      fs.unlinkSync(req.file.path);
+      res.status(500).json({ msg: err.message });
+    }
   }
 );
+
+
+
+
 
 router.put("/:id", auth, uploadImage.single("image"), async (req, res) => {
   try {

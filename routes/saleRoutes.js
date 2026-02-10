@@ -31,36 +31,44 @@ router.post("/buy", auth, async (req, res) => {
 
     const amount = quantity * product.price;
 
-    let invoice;
+   
 
-    if (invoiceId) {
-      invoice = await Invoice.findOne({
-        invoiceId,
-        owner: req.user
-      });
+    
 
-      if (!invoice) throw new Error("Invoice not found");
-    } else {
-
-
-      const lastInvoice = await Invoice.findOne({ owner: req.user })
-  .sort({ createdAt: -1 })
+const lastInvoice = await Invoice.findOne({ owner: req.user })
+  .sort({ invoiceId: -1 })   
   .select("invoiceId");
 
 let nextInvoiceNumber = 1000;
 
 if (lastInvoice && lastInvoice.invoiceId) {
-  const lastNumber = parseInt(lastInvoice.invoiceId.split("-")[1], 10);
+  const lastNumber = parseInt(lastInvoice.invoiceId.replace("INV-", ""), 10);
   nextInvoiceNumber = lastNumber + 1;
 }
 
+let newInvoiceId = `INV-${nextInvoiceNumber}`;
+let exists = await Invoice.findOne({
+  invoiceId: newInvoiceId,
+  owner: req.user,
+});
+
+while (exists) {
+  nextInvoiceNumber++;
+  newInvoiceId = `INV-${nextInvoiceNumber}`;
+  exists = await Invoice.findOne({
+    invoiceId: newInvoiceId,
+    owner: req.user,
+  });
+}
 
 const invoice = await Invoice.create({
-  invoiceId: `INV-${nextInvoiceNumber}`,
+  invoiceId: newInvoiceId,
   owner: req.user,
   amount: 0,
 });
-    }
+
+ invoice.amount += amount;
+    await invoice.save();
 
     const sale = await Sale.create({
       invoiceId: invoice.invoiceId,
@@ -70,8 +78,7 @@ const invoice = await Invoice.create({
       owner: req.user
     });
 
-    invoice.amount += amount;
-    await invoice.save();
+   
     
     res.status(201).json({
       msg: "Product added to invoice",
@@ -84,7 +91,7 @@ const invoice = await Invoice.create({
 
     if (err.code === 11000) {
       return res.status(400).json({
-        msg: "Product already exists in this invoice"
+        msg: res
       });
     }
 
