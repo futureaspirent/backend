@@ -153,7 +153,7 @@ router.post("/", auth, uploadImage.single("image"), async (req, res) => {
   try {
     const image = req.file
       ? `/uploads/user_${req.user}/${req.file.filename}`
-      : "/default/product.jpg";
+      : "/default/product.png";
 
       
     const product = new Product({
